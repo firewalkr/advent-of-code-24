@@ -17,42 +17,31 @@ func isAntinodeValid(a Pos, sizeX, sizeY int) bool {
 	return a.X >= 0 && a.Y >= 0 && a.X < sizeX && a.Y < sizeY
 }
 
-func getMinXPos(p1 Pos, p2 Pos) (int, int, Pos, Pos) {
-	if p1.X < p2.X {
-		return p1.X, p2.X, p1, p2
-	} else {
-		return p2.X, p1.X, p2, p1
-	}
-}
-
-func getMinYPos(p1 Pos, p2 Pos) (int, int, Pos, Pos) {
-	if p1.Y < p2.Y {
-		return p1.Y, p2.Y, p1, p2
-	} else {
-		return p2.Y, p1.Y, p2, p1
-	}
+func intAbs(x int) int {
+	return int(math.Abs(float64(x)))
 }
 
 func getAntinodes(p1, p2 Pos, sizeX, sizeY int) []Pos {
-	diffX := int(math.Abs(float64(p1.X - p2.X)))
-	diffY := int(math.Abs(float64(p1.Y - p2.Y)))
+	diffX := intAbs(p1.X - p2.X)
+	diffY := intAbs(p1.Y - p2.Y)
 
-	minX, maxX, minXPos, maxXPos := getMinXPos(p1, p2)
-	minY, maxY, _, _ := getMinYPos(p1, p2)
-
-	antiNodeMinX := minX - diffX
-	antiNodeMinY := minY - diffY
-	antiNodeMaxX := maxX + diffX
-	antiNodeMaxY := maxY + diffY
-
-	antiNodeLeft := Pos{X: antiNodeMinX}
-	antiNodeRight := Pos{X: antiNodeMaxX}
-	if minXPos.Y < maxXPos.Y {
-		antiNodeLeft.Y = antiNodeMinY
-		antiNodeRight.Y = antiNodeMaxY
+	var left, right *Pos
+	if p1.X-p2.X < 0 {
+		left = &p1
+		right = &p2
 	} else {
-		antiNodeLeft.Y = antiNodeMaxY
-		antiNodeRight.Y = antiNodeMinY
+		left = &p2
+		right = &p1
+	}
+	antiNodeLeft := Pos{X: left.X - diffX, Y: left.Y - diffY}
+	antiNodeRight := Pos{X: right.X + diffX, Y: right.Y + diffY}
+
+	if left.Y < right.Y {
+		antiNodeLeft.Y = left.Y - diffY
+		antiNodeRight.Y = right.Y + diffY
+	} else {
+		antiNodeLeft.Y = left.Y + diffY
+		antiNodeRight.Y = right.Y - diffY
 	}
 
 	results := []Pos{}
