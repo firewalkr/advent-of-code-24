@@ -146,7 +146,7 @@ func Test_countNumTrails(t *testing.T) {
 	// Execute test cases
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			out := countNumTrails(c.terrain, c.xStart, c.yStart, c.expected, c.numReached)
+			out := countPathsPerTrail(c.terrain, c.xStart, c.yStart, c.expected, c.numReached)
 			if out != c.output {
 				t.Errorf("Expected %v, but got %v", c.output, out)
 			}
