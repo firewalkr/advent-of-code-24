@@ -65,7 +65,7 @@ func IsTotalFeasible(missingOp *MissingOp) bool {
 
 		if acc == missingOp.Total {
 			missingOp.operators = operators
-			fmt.Println(missingOp)
+			// fmt.Println(missingOp)
 			return true
 		}
 	}

@@ -5,8 +5,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
-
-	"log"
+	// "log"
 )
 
 func addMuls(input string) int {
@@ -15,7 +14,7 @@ func addMuls(input string) int {
 
 	matches := regexp.FindAllStringSubmatch(input, -1)
 
-	fmt.Println("matches", "matches", matches)
+	// fmt.Println("matches", "matches", matches)
 
 	sum := 0
 	multiplicationActive := true
@@ -31,7 +30,7 @@ func addMuls(input string) int {
 		if multiplicationActive {
 			num1, _ := strconv.Atoi(match[1])
 			num2, _ := strconv.Atoi(match[2])
-			log.Println("match", "num1", num1, "num2", num2)
+			// log.Println("match", "num1", num1, "num2", num2)
 
 			sum += num1 * num2
 		}

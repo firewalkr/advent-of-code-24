@@ -3,7 +3,8 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"log/slog"
+
+	// "log/slog"
 	"math"
 	"os"
 	"strconv"
@@ -29,12 +30,12 @@ func isReportSafeWithAtMostOneFlaw_Ugly(input string) bool {
 	numSuccesses := 0
 	for i := 0; i < len(levels); i++ {
 		levelsWithoutCurrent := deleteAtIndex(levels, i)
-		slog.Info("Here we go", "levels", levels, "levelsWithoutCurrent", levelsWithoutCurrent)
+		// slog.Info("Here we go", "levels", levels, "levelsWithoutCurrent", levelsWithoutCurrent)
 		if !checkSequenceStrict(levelsWithoutCurrent) {
-			slog.Info("Failed")
+			// slog.Info("Failed")
 		} else {
 			numSuccesses++
-			slog.Info("Success")
+			// slog.Info("Success")
 		}
 	}
 
@@ -62,7 +63,7 @@ func checkSequenceStrict(levels []int) bool {
 		if increasing != nowIncreasing {
 			return false
 		}
-		slog.Info(fmt.Sprintf("current: %d, previous: %d, absDiff: %d", levels[i], previous, absDiff))
+		// slog.Info(fmt.Sprintf("current: %d, previous: %d, absDiff: %d", levels[i], previous, absDiff))
 
 		if absDiff > 3 || absDiff == 0 {
 			return false

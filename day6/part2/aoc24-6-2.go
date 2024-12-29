@@ -180,7 +180,7 @@ func main() {
 		positionsFirstRun[Pos{s.x, s.y}] = struct{}{}
 	}
 
-	fmt.Printf("grid dimensions: %d x %d\n", grid.xLen, grid.yLen)
+	// fmt.Printf("grid dimensions: %d x %d\n", grid.xLen, grid.yLen)
 
 	var countPositionsThatLeadToLoop int
 

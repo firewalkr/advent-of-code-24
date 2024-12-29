@@ -1,5 +1,8 @@
 package main
 
+// this one takes some 10 secs on an M1 Max.
+// will revisit.
+
 import (
 	"fmt"
 	"math"
@@ -97,7 +100,7 @@ func IsTotalFeasible(missingOp *MissingOp) bool {
 		}
 		if acc == missingOp.Total {
 			missingOp.operators = operators
-			fmt.Println("acc:", acc, "op", missingOp)
+			// fmt.Println("acc:", acc, "op", missingOp)
 
 			return true
 		}

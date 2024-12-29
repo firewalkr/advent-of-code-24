@@ -1,5 +1,7 @@
 package main
 
+// this is slow, part 2 uses much much faster code
+
 import (
 	"fmt"
 	"os"

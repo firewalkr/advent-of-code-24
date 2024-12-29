@@ -17,7 +17,7 @@ func countXMAS(input [][]byte) int {
 		for col := 0; col < len(input[row]); col++ {
 			if col <= len(input[row])-lenXMAS {
 				horiz := input[row][col : col+lenXMAS]
-				fmt.Printf("comparing %s\n", horiz)
+				// fmt.Printf("comparing %s\n", horiz)
 				if bytes.Equal(horiz, XMAS) {
 					count++
 				} else if bytes.Equal(horiz, SAMX) {
@@ -26,7 +26,7 @@ func countXMAS(input [][]byte) int {
 			}
 			if row <= len(input)-lenXMAS {
 				vert := getVerticalByteSlice(input, row, col, lenXMAS)
-				fmt.Printf("comparing vertical %s\n", vert)
+				// fmt.Printf("comparing vertical %s\n", vert)
 				if bytes.Equal(vert, XMAS) {
 					count++
 				} else if bytes.Equal(vert, SAMX) {
@@ -35,7 +35,7 @@ func countXMAS(input [][]byte) int {
 			}
 			if row <= len(input)-lenXMAS && col <= len(input[row])-lenXMAS {
 				diagDown := getDiagonalDownByteSlice(input, row, col, lenXMAS)
-				fmt.Printf("comparing diagonal down %s\n", diagDown)
+				// fmt.Printf("comparing diagonal down %s\n", diagDown)
 				if bytes.Equal(diagDown, XMAS) {
 					count++
 				} else if bytes.Equal(diagDown, SAMX) {
@@ -44,7 +44,7 @@ func countXMAS(input [][]byte) int {
 			}
 			if row >= lenXMAS-1 && col <= len(input[row])-lenXMAS {
 				diagUp := getDiagonalUpByteSlice(input, row, col, lenXMAS)
-				fmt.Printf("comparing diagonal up %s\n", diagUp)
+				// fmt.Printf("comparing diagonal up %s\n", diagUp)
 				if bytes.Equal(diagUp, XMAS) {
 					count++
 				} else if bytes.Equal(diagUp, SAMX) {

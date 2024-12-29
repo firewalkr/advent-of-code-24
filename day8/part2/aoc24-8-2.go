@@ -87,8 +87,8 @@ func CountAntinodes(input string) int {
 		}
 	}
 
-	fmt.Println(positionsWithAntinodes)
-	printResult(input, positionsWithAntinodes)
+	// fmt.Println(positionsWithAntinodes)
+	// printResult(input, positionsWithAntinodes)
 
 	return len(positionsWithAntinodes)
 }
