@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"os"
+	// "runtime"
 	"strings"
+	// "sync"
+	"sync/atomic"
 )
 
 // Pos represents a position in the grid, it is 0-indexed
@@ -74,6 +77,29 @@ func NewGrid(input string) *Grid {
 	}
 
 	return res
+}
+
+func (g *Grid) Clone() *Grid {
+	ng := *g
+
+	ng.grid = make([][]byte, g.yLen)
+	for i, row := range g.grid {
+		ng.grid[i] = make([]byte, g.xLen)
+		copy(ng.grid[i], row)
+	}
+
+	ng.pastStatuses = map[Status]struct{}{}
+	ng.pastPositions = map[Pos]struct{}{}
+
+	for k, v := range g.pastStatuses {
+		ng.pastStatuses[k] = v
+	}
+
+	for k, v := range g.pastPositions {
+		ng.pastPositions[k] = v
+	}
+
+	return &ng
 }
 
 func (g *Grid) String() string {
@@ -250,15 +276,59 @@ func main() {
 
 	grid := NewGrid(input)
 
-	err = run(grid)
-	if err != nil {
+	// initial version was placing obstacles on all empty positions but
+	// this was improved by doing a regular run first, checking which
+	// positions the guard goes through, and then only trying to place
+	// obstacles in those positions. (5212 - 1, since we don't block
+	// the guard's starting position)
+	firstRunGrid := grid.Clone()
+
+	err = run(firstRunGrid)
+	if err != nil && err != errOutOfBounds {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
-	// fmt.Println(grid)
+	fmt.Printf("grid dimensions: %d x %d\n", grid.xLen, grid.yLen)
 
-	fmt.Println(len(grid.pastPositions))
+	//init waitgroup
+	// var wg sync.WaitGroup
+	// limit to num of cpus
+	// var sem = make(chan struct{}, runtime.GOMAXPROCS(0))
+	var countPositionsThatLeadToLoop atomic.Int32
+
+	for x := 0; x < grid.xLen; x++ {
+		for y := 0; y < grid.yLen; y++ {
+			if _, goesByPosition := firstRunGrid.pastPositions[Pos{X: x, Y: y}]; !goesByPosition {
+				continue
+			}
+
+			v, _ := grid.getValAt(Pos{X: x, Y: y})
+			if v == empty {
+				fmt.Printf("Trying %d, %d\n", x, y)
+				// clone grid.
+				ng := grid.Clone()
+
+				ng.setValAt(Pos{X: x, Y: y}, obstacle)
+
+				// wg.Add(1)
+				// sem <- struct{}{}
+				// go func(g *Grid, sem chan struct{}) {
+					// defer wg.Done()
+					err := run(ng)
+					if err == errStuckInLoop {
+						countPositionsThatLeadToLoop.Add(1)
+					}
+					// <-sem
+				// }(ng, sem)
+
+			}
+		}
+	}
+
+	// wg.Wait()
+
+	fmt.Println(countPositionsThatLeadToLoop.Load())
 }
 
 func readFile(filename string) (string, error) {

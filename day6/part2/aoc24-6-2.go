@@ -3,103 +3,43 @@ package main
 import (
 	"fmt"
 	"os"
-	"runtime"
 	"strings"
-	"sync"
-	"sync/atomic"
 )
-
-// Pos represents a position in the grid, it is 0-indexed
-type Pos struct {
-	X int
-	Y int
-}
-
-type Grid struct {
-	grid          [][]byte
-	xLen          int
-	yLen          int
-	pastStatuses  map[Status]struct{}
-	pastPositions map[Pos]struct{}
-}
-
-var errOutOfBounds = fmt.Errorf("out of bounds")
-var errObstacle = fmt.Errorf("obstacle")
-var errStuckInLoop = fmt.Errorf("stuck in loop")
 
 type Node byte
 
+type Grid struct {
+	grid [][]Node
+	xLen int
+	yLen int
+}
+
+var errStuckInLoop = fmt.Errorf("stuck in loop")
+
 const (
-	up       Node = '^'
-	down     Node = 'v'
-	left     Node = '<'
-	right    Node = '>'
-	empty    Node = '.'
-	obstacle Node = '#'
+	up          Node = '^'
+	down        Node = 'v'
+	left        Node = '<'
+	right       Node = '>'
+	empty       Node = '.'
+	obstacle    Node = '#'
+	outOfBounds Node = 0
 )
-
-var nextDir = map[Node]Node{
-	up:    right,
-	right: down,
-	down:  left,
-	left:  up,
-}
-
-type Status struct {
-	Pos Pos
-	Dir Node
-}
-
-func (s *Status) String() string {
-	return fmt.Sprintf("(%d, %d) %c", s.Pos.X, s.Pos.Y, s.Dir)
-}
 
 func NewGrid(input string) *Grid {
 	gridStr := strings.Split(strings.TrimSpace(input), "\n")
-	grid := make([][]byte, len(gridStr))
+	grid := make([][]Node, len(gridStr))
 	for i, row := range gridStr {
-		grid[i] = []byte(row)
+		grid[i] = []Node(row)
 	}
 
 	res := &Grid{
-		grid:          grid,
-		xLen:          len(grid[0]),
-		yLen:          len(grid),
-		pastStatuses:  map[Status]struct{}{},
-		pastPositions: map[Pos]struct{}{},
-	}
-
-	s, _ := res.getCurrentStatus()
-
-	if s != nil {
-		res.pastStatuses[*s] = struct{}{}
-		res.pastPositions[s.Pos] = struct{}{}
+		grid: grid,
+		xLen: len(grid[0]),
+		yLen: len(grid),
 	}
 
 	return res
-}
-
-func (g *Grid) Clone() *Grid {
-	ng := *g
-
-	ng.grid = make([][]byte, g.yLen)
-	for i, row := range g.grid {
-		ng.grid[i] = make([]byte, g.xLen)
-		copy(ng.grid[i], row)
-	}
-
-	ng.pastStatuses = map[Status]struct{}{}
-	ng.pastPositions = map[Pos]struct{}{}
-
-	for k, v := range g.pastStatuses {
-		ng.pastStatuses[k] = v
-	}
-
-	for k, v := range g.pastPositions {
-		ng.pastPositions[k] = v
-	}
-
-	return &ng
 }
 
 func (g *Grid) String() string {
@@ -112,158 +52,105 @@ func (g *Grid) String() string {
 	return strings.TrimSpace(sb.String())
 }
 
-func (g *Grid) getValAt(pos Pos) (Node, error) {
-	if g.isOutOfBounds(pos) {
-		return 0, errOutOfBounds
-	}
-	return Node(g.grid[pos.Y][pos.X]), nil
-}
-
-func (g *Grid) setValAt(pos Pos, val Node) error {
-	if g.isOutOfBounds(pos) {
-		return errOutOfBounds
+func (g *Grid) getValAt(x, y int) Node {
+	if g.isOutOfBounds(x, y) {
+		return outOfBounds
 	}
 
-	g.grid[pos.Y][pos.X] = byte(val)
-
-	return nil
+	return Node(g.grid[y][x])
 }
 
-func (g *Grid) isOutOfBounds(pos Pos) bool {
-	return pos.X < 0 || pos.X >= g.xLen || pos.Y < 0 || pos.Y >= g.yLen
+func (g *Grid) setValAt(x, y int, val Node) {
+	g.grid[y][x] = val
 }
 
-func (g *Grid) getCurrentPosition() (*Pos, error) {
+func (g *Grid) isOutOfBounds(x, y int) bool {
+	return x < 0 || x >= g.xLen || y < 0 || y >= g.yLen
+}
+
+func (g *Grid) getBotPosition() (int, int) {
 	for y, row := range g.grid {
 		for x, val := range row {
 			orientation := Node(val)
 			if orientation == up || orientation == down || orientation == left || orientation == right {
-				return &Pos{X: x, Y: y}, nil
+				return x, y
 			}
 		}
 	}
 
-	return nil, errOutOfBounds
+	return -1, -1
 }
 
-func (g *Grid) getMaybeNextPosition() (*Pos, error) {
-	s, err := g.getCurrentStatus()
-	if err != nil {
-		return nil, err
-	}
-
-	p := s.Pos
-
-	switch s.Dir {
-	case up:
-		p.Y--
-	case down:
-		p.Y++
-	case left:
-		p.X--
-	case right:
-		p.X++
-	}
-
-	if g.isOutOfBounds(p) {
-		return nil, errOutOfBounds
-	}
-
-	if Node(g.grid[p.Y][p.X]) == obstacle {
-		return nil, errObstacle
-	}
-
-	maybeNewStatus := Status{
-		Pos: p,
-		Dir: s.Dir,
-	}
-
-	if _, ok := g.pastStatuses[maybeNewStatus]; ok {
-		return nil, errStuckInLoop
-	}
-
-	return &p, nil
+type Status struct {
+	x, y, deltaX, deltaY int
 }
 
-func (g *Grid) getCurrentStatus() (*Status, error) {
-	pos, err := g.getCurrentPosition()
-	if err != nil {
-		return nil, err
-	}
-
-	val, err := g.getValAt(*pos)
-	if err != nil {
-		return nil, err
-	}
-
-	return &Status{
-		Pos: *pos,
-		Dir: Node(val),
-	}, nil
+type Pos struct {
+	x, y int
 }
 
-func (g *Grid) move() (*Status, error) {
-	s, err := g.getCurrentStatus()
-	if err != nil {
-		return nil, err
-	}
+func run(grid *Grid, botX, botY int, direction Node) (map[Status]struct{}, error) {
+	deltaX, deltaY := getDeltas(direction)
 
-	// fmt.Println("current status", s)
+	wentBy := map[Status]struct{}{}
 
-	tries := 0
-
-	var newPos Pos
-	dir := s.Dir
 	for {
-		tries++
-		if tries > 4 {
-			return nil, errStuckInLoop
-		}
+		// fmt.Print("\033[H\033[2J")
+		// grid.setValAt(botX, botY, '@')
+		// fmt.Print(grid)
+		// grid.setValAt(botX, botY, empty)
+		// time.Sleep(200 * time.Millisecond)
 
-		p, err := g.getMaybeNextPosition()
-		if err == errObstacle {
-			// Turn 90 degrees clockwise
-			dir = nextDir[dir]
-			g.setValAt(s.Pos, dir)
-		} else if err == errOutOfBounds {
-			g.setValAt(s.Pos, empty)
-			return nil, errOutOfBounds
-		} else if err != nil {
-			return nil, err
-		} else {
-			newPos = *p
+		s := Status{botX, botY, deltaX, deltaY}
+		if _, been := wentBy[s]; been {
+			return wentBy, errStuckInLoop
+		}
+		wentBy[s] = struct{}{}
+
+		newX := botX + deltaX
+		newY := botY + deltaY
+		node := grid.getValAt(newX, newY)
+		if node == outOfBounds {
 			break
 		}
+		if node == obstacle {
+			deltaX, deltaY = rotate90CW(deltaX, deltaY)
+			continue
+		}
+		botX = newX
+		botY = newY
 	}
 
-	// Update current position
-	g.setValAt(s.Pos, empty)
-	g.setValAt(newPos, dir)
-
-	newStatus := Status{
-		Pos: newPos,
-		Dir: dir,
-	}
-
-	g.pastStatuses[newStatus] = struct{}{}
-	g.pastPositions[newStatus.Pos] = struct{}{}
-
-	return &newStatus, nil
+	return wentBy, nil
 }
 
-func run(grid *Grid) error {
-	for {
-		// fmt.Printf("%s\n\n\n", grid)
-		_, err := grid.move()
-		if err == errOutOfBounds {
-			// fmt.Println("Out of bounds")
-			break
-		} else if err != nil {
-			return err
-		}
+func getDeltas(direction Node) (int, int) {
+	deltaX, deltaY := 0, 0
+
+	if direction == up {
+		deltaY = -1
+	} else if direction == right {
+		deltaX = 1
+	} else if direction == down {
+		deltaY = 1
+	} else if direction == left {
+		deltaX = -1
 	}
 
-	return nil
+	return deltaX, deltaY
+}
+
+// assumes consistent delta values
+func rotate90CW(curDeltaX, curDeltaY int) (int, int) {
+	if curDeltaY == -1 {
+		return 1, 0
+	} else if curDeltaX == 1 {
+		return 0, 1
+	} else if curDeltaY == 1 {
+		return -1, 0
+	} else { // if curDeltaX == -1
+		return 0, -1
+	}
 }
 
 func main() {
@@ -276,59 +163,50 @@ func main() {
 
 	grid := NewGrid(input)
 
-	// initial version was placing obstacles on all empty positions but
-	// this was improved by doing a regular run first, checking which
-	// positions the guard goes through, and then only trying to place
-	// obstacles in those positions. (5212 - 1, since we don't block
-	// the guard's starting position)
-	firstRunGrid := grid.Clone()
+	botX, botY := grid.getBotPosition()
+	directionNode := grid.getValAt(botX, botY)
+	grid.setValAt(botX, botY, empty)
 
-	err = run(firstRunGrid)
-	if err != nil && err != errOutOfBounds {
+	// do a first run to check where the bot passes by without extra obstacles.
+	// we know we need to place the test obstacle only in these locations.
+	noObstacleStatuses, err := run(grid, botX, botY, directionNode)
+	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
+	positionsFirstRun := map[Pos]struct{}{}
+	for s := range noObstacleStatuses {
+		positionsFirstRun[Pos{s.x, s.y}] = struct{}{}
+	}
+
 	fmt.Printf("grid dimensions: %d x %d\n", grid.xLen, grid.yLen)
 
-	//init waitgroup
-	var wg sync.WaitGroup
-	// limit to num of cpus
-	var sem = make(chan struct{}, runtime.GOMAXPROCS(0))
-	var countPositionsThatLeadToLoop atomic.Int32
+	var countPositionsThatLeadToLoop int
 
 	for x := 0; x < grid.xLen; x++ {
 		for y := 0; y < grid.yLen; y++ {
-			if _, goesByPosition := firstRunGrid.pastPositions[Pos{X: x, Y: y}]; !goesByPosition {
+			if _, goesByPosition := positionsFirstRun[Pos{x, y}]; !goesByPosition {
 				continue
 			}
 
-			v, _ := grid.getValAt(Pos{X: x, Y: y})
+			v := grid.getValAt(x, y)
 			if v == empty {
-				fmt.Printf("Trying %d, %d\n", x, y)
+				// fmt.Printf("Trying %d, %d\n", x, y)
 				// clone grid.
-				ng := grid.Clone()
+				grid.setValAt(x, y, obstacle)
 
-				ng.setValAt(Pos{X: x, Y: y}, obstacle)
+				_, err := run(grid, botX, botY, directionNode)
+				if err == errStuckInLoop {
+					countPositionsThatLeadToLoop++
+				}
 
-				wg.Add(1)
-				sem <- struct{}{}
-				go func(g *Grid, sem chan struct{}) {
-					defer wg.Done()
-					err := run(ng)
-					if err == errStuckInLoop {
-						countPositionsThatLeadToLoop.Add(1)
-					}
-					<-sem
-				}(ng, sem)
-
+				grid.setValAt(x, y, empty)
 			}
 		}
 	}
 
-	wg.Wait()
-
-	fmt.Println(countPositionsThatLeadToLoop.Load())
+	fmt.Println(countPositionsThatLeadToLoop)
 }
 
 func readFile(filename string) (string, error) {
