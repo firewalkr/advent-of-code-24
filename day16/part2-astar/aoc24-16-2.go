@@ -8,10 +8,22 @@ import (
 	"strings"
 )
 
-// Implemented A* like a boss, via the Wikipedia pseudocode, to see
-// what real code looks and performs like. Sonnet also knows it but
-// required some guidance due to the peculiarities of the rotation
-// costs.
+// Implemented A* like a boss (not really), via the Wikipedia pseudocode, to
+// see what real code looks and performs like. This could still use a better
+// structure for the openSet, since I'm always finding the minimum fScore.
+//
+// The initial implementation didn't get the nodes from _all_ the best paths,
+// of course, so I then did a (very) quick fix on the A* implementation, i.e.
+// I changed `cameFrom` to store a slice of nodes instead of just one.
+//
+// Claude Sonnet did the changes on the path reconstruction (after I changed the
+// function signature, but Sonnet did it pretty much like an actual boss).
+//
+// Anyway, I clearly had forgotten how this worked (if I ever knew but I'm pretty
+// sure I touched it in college) and now I see why it's so good. The advantage
+// of having done my own poor man's version is that I now understand A* better
+// AND I was also able to do the "get all nodes from all best paths" bit in just
+// a couple of minutes, since I knew exactly how to modify A*.
 
 const Wall = byte('#')
 const Start = byte('S')
@@ -132,19 +144,45 @@ func scoreMapGet(gScore map[Traversal]int, t Traversal) int {
 }
 
 // here, we only care about the positions traversed, not the directions
-func reconstructPath(cameFrom map[Traversal]Traversal, current Traversal) []Pos {
+func reconstructPath(cameFrom map[Traversal][]Traversal, current Traversal) []Pos {
 	totalPath := []Pos{current.pos}
 
+	currents := []Traversal{current}
+
 	for {
-		if prior, seen := cameFrom[current]; seen {
-			totalPath = append([]Pos{prior.pos}, totalPath...)
-			current = prior
-		} else {
+		nextCurrents := []Traversal{}
+
+		for _, c := range currents {
+			if previous, seen := cameFrom[c]; seen {
+				for _, p := range previous {
+					totalPath = append(totalPath, p.pos)
+					nextCurrents = append(nextCurrents, p)
+				}
+			}
+		}
+
+		if len(nextCurrents) == 0 {
 			break
+		}
+
+		currents = nextCurrents
+	}
+
+	return uniq(totalPath)
+}
+
+func uniq(positions []Pos) []Pos {
+	seen := map[Pos]struct{}{}
+	uniq := []Pos{}
+
+	for _, p := range positions {
+		if _, ok := seen[p]; !ok {
+			uniq = append(uniq, p)
+			seen[p] = struct{}{}
 		}
 	}
 
-	return totalPath
+	return uniq
 }
 
 func aStar(
@@ -158,7 +196,7 @@ func aStar(
 
 	openSet := map[Traversal]struct{}{startTraversal: {}}
 
-	cameFrom := map[Traversal]Traversal{}
+	cameFrom := map[Traversal][]Traversal{}
 
 	gScore := map[Traversal]int{}
 	gScore[startTraversal] = 0
@@ -178,8 +216,12 @@ func aStar(
 		for _, neighbour := range getNeighbours(g, currentNode) {
 			tentativeGScore := scoreMapGet(gScore, currentNode) + distanceToNeighbour(currentNode, neighbour)
 
+			if tentativeGScore == scoreMapGet(gScore, neighbour) {
+				cameFrom[neighbour] = append(cameFrom[neighbour], currentNode)
+			}
+
 			if tentativeGScore < scoreMapGet(gScore, neighbour) {
-				cameFrom[neighbour] = currentNode
+				cameFrom[neighbour] = append(cameFrom[neighbour], currentNode)
 				gScore[neighbour] = tentativeGScore
 				fScore[neighbour] = gScore[neighbour] + heuristic(neighbour)
 
