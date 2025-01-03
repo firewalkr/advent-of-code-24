@@ -57,11 +57,11 @@ func Test_calcTilesInBestPaths(t *testing.T) {
 			args:   args{readGrid(aocSample1)},
 			output: 45,
 		},
-		// {
-		// 	name:   "aoc sample 2",
-		// 	args:   args{readGrid(aocSample2)},
-		// 	output: 64,
-		// },
+		{
+			name:   "aoc sample 2",
+			args:   args{readGrid(aocSample2)},
+			output: 64,
+		},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

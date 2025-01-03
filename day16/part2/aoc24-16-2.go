@@ -28,6 +28,7 @@ const End = byte('E')
 type Grid struct {
 	grid           [][]byte
 	startX, startY int
+	endX, endY     int
 }
 
 type Direction int
@@ -74,6 +75,18 @@ func (g *Grid) FindStartPos() (xPos, yPos int) {
 	for y := range g.grid {
 		for x := range g.grid[y] {
 			if g.GetValue(x, y) == Start {
+				return x, y
+			}
+		}
+	}
+
+	return -1, -1
+}
+
+func (g *Grid) FindEndPos() (xPos, yPos int) {
+	for y := range g.grid {
+		for x := range g.grid[y] {
+			if g.GetValue(x, y) == End {
 				return x, y
 			}
 		}
@@ -160,6 +173,16 @@ type BestScoreTraversed struct {
 	traversalsWithScore map[TraversalWithScore]struct{}
 }
 
+var numNodeVisits int
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+
+	return x
+}
+
 func calcTilesInBestPathsHelper(
 	g *Grid,
 	x, y int,
@@ -168,9 +191,8 @@ func calcTilesInBestPathsHelper(
 	seenWithScore SeenWithScore,
 	numNode int,
 	bestScoreTraversed *BestScoreTraversed) int {
-	if g.GetValue(x, y) == Wall {
-		return -1
-	}
+	numNodeVisits++
+
 	thisTraversal := TraversalWithScore{Traversal{Pos{x, y}, direction}, score}
 	currentPath[numNode] = thisTraversal
 
@@ -189,9 +211,9 @@ func calcTilesInBestPathsHelper(
 		return score
 	}
 
-	if score >= 135512 {
-		return -1
-	}
+	// if score >= 135512 {
+	// 	return -1
+	// }
 
 	if priorScore, seen := seenWithScore[thisTraversal.Traversal]; seen {
 		if priorScore < score {
@@ -211,23 +233,31 @@ func calcTilesInBestPathsHelper(
 
 	deltaX, deltaY := direction.deltas()
 
-	downrangeScore := calcTilesInBestPathsHelper(g, x+deltaX, y+deltaY, direction, score+1, seenWithScore, numNode+1, bestScoreTraversed)
-	if downrangeScore != -1 {
-		minDownrange = min(downrangeScore, minDownrange)
+	if g.GetValue(x+deltaX, y+deltaY) != Wall && score+1 < bestScoreTraversed.score {
+		downrangeScore := calcTilesInBestPathsHelper(g, x+deltaX, y+deltaY, direction, score+1, seenWithScore, numNode+1, bestScoreTraversed)
+		if downrangeScore != -1 {
+			minDownrange = min(downrangeScore, minDownrange)
+		}
 	}
 
 	direction90CW := direction.rotate90CW()
+	deltaX, deltaY = direction90CW.deltas()
 
-	downrangeScore = calcTilesInBestPathsHelper(g, x, y, direction90CW, score+1000, seenWithScore, numNode+1, bestScoreTraversed)
-	if downrangeScore != -1 {
-		minDownrange = min(downrangeScore, minDownrange)
+	if g.GetValue(x+deltaX, y+deltaY) != Wall && score+1000 < bestScoreTraversed.score {
+		downrangeScore := calcTilesInBestPathsHelper(g, x, y, direction90CW, score+1000, seenWithScore, numNode+1, bestScoreTraversed)
+		if downrangeScore != -1 {
+			minDownrange = min(downrangeScore, minDownrange)
+		}
 	}
 
 	direction90CCW := direction.rotate90CCW()
+	deltaX, deltaY = direction90CCW.deltas()
 
-	downrangeScore = calcTilesInBestPathsHelper(g, x, y, direction90CCW, score+1000, seenWithScore, numNode+1, bestScoreTraversed)
-	if downrangeScore != -1 {
-		minDownrange = min(downrangeScore, minDownrange)
+	if g.GetValue(x+deltaX, y+deltaY) != Wall && score+1000 < bestScoreTraversed.score {
+		downrangeScore := calcTilesInBestPathsHelper(g, x, y, direction90CCW, score+1000, seenWithScore, numNode+1, bestScoreTraversed)
+		if downrangeScore != -1 {
+			minDownrange = min(downrangeScore, minDownrange)
+		}
 	}
 
 	return minDownrange
@@ -254,6 +284,7 @@ func main() {
 	grid := readGrid(gridStr)
 
 	fmt.Println(calcTilesInBestPaths(grid))
+	fmt.Println(numNodeVisits)
 }
 
 func readGrid(input []string) *Grid {
@@ -263,10 +294,8 @@ func readGrid(input []string) *Grid {
 		grid.grid = append(grid.grid, []byte(line))
 	}
 
-	startX, startY := grid.FindStartPos()
-
-	grid.startX = startX
-	grid.startY = startY
+	grid.startX, grid.startY = grid.FindStartPos()
+	grid.endX, grid.endY = grid.FindEndPos()
 
 	return grid
 }

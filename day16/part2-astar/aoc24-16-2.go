@@ -185,6 +185,8 @@ func uniq(positions []Pos) []Pos {
 	return uniq
 }
 
+var numNodeVisits = 0
+
 func aStar(
 	g *Grid,
 	heuristic func(t Traversal) int,
@@ -214,6 +216,8 @@ func aStar(
 		delete(openSet, currentNode)
 
 		for _, neighbour := range getNeighbours(g, currentNode) {
+			numNodeVisits++
+
 			tentativeGScore := scoreMapGet(gScore, currentNode) + distanceToNeighbour(currentNode, neighbour)
 
 			if tentativeGScore == scoreMapGet(gScore, neighbour) {
@@ -302,7 +306,7 @@ func main() {
 	grid := readGrid(gridStr)
 
 	path, score := aStar(grid, func(t Traversal) int {
-		return abs(t.pos.x-grid.endX) + abs(t.pos.y-grid.endY) // FIXME: Manhattan distance is not necessarily good here, because of rotation costs
+		return abs(t.pos.x-grid.endX) + abs(t.pos.y-grid.endY)
 	})
 
 	fmt.Println(len(path))
@@ -314,17 +318,29 @@ func main() {
 	}
 
 	fmt.Println(grid.PrintWithTilesInBestPaths(posMap))
+
+	fmt.Println(numNodeVisits)
 }
 
 func readGrid(input []string) *Grid {
 	grid := &Grid{}
 
+	numEmptyNodes := 0
+
 	for _, line := range input {
 		grid.grid = append(grid.grid, []byte(line))
+
+		for _, b := range []byte(line) {
+			if b == Empty {
+				numEmptyNodes++
+			}
+		}
 	}
 
 	grid.startX, grid.startY = grid.FindStartPos()
 	grid.endX, grid.endY = grid.FindEndPos()
+
+	fmt.Println("Empty nodes:", numEmptyNodes)
 
 	return grid
 }
